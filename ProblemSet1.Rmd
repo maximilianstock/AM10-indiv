@@ -1,0 +1,114 @@
+---
+title: "prob1Vis"
+author: "Maximilian Stock"
+date: "07/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(vroom)
+library(tidyverse)
+library(scales)  #for transparency
+library(lubridate)
+```
+
+
+```{r}
+data <- vroom("2021-09-metropolitan-stop-and-search.csv")
+```
+
+```{r}
+plot1Data <- data %>%
+  drop_na(`Officer-defined ethnicity`) %>% 
+  mutate(arrestYN = ifelse(Outcome == "Arrest", "Arrest", "No Arrest")) %>% 
+  group_by(`Officer-defined ethnicity`) %>%
+  mutate(countT= n()) %>%
+  group_by(arrestYN, add=TRUE) %>%
+  mutate(per = n()/countT) %>% 
+  group_by(`Officer-defined ethnicity`, arrestYN,per) %>%
+  summarise(n = n()) %>% 
+  
+  ggplot(aes(fill = arrestYN, y = n, x = fct_relevel(`Officer-defined ethnicity`, "Other", "White", "Black", "Asian"))) +
+    geom_bar(position="fill", stat="identity")+
+    geom_text(aes(label=percent(per), y = ifelse(per > 0.3, per-0.05, 1-per+0.05)), color = "white")+
+  
+    scale_fill_manual(values=c("#1BA4EA", "#061C2C"))+
+  
+    labs(title = "Searched Asians are least likely to get arrested",
+         subtitle = "Arrest percentages during Stop & Search incidents for Sep. '21 in the City of London by perceived race",
+         x = "") +
+  
+    theme_classic()+
+    theme(legend.title = element_blank(),
+          axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank())
+plot1Data
+
+```
+
+```{r}
+
+stanD <- data %>%
+  mutate(date = date(Date)) %>% 
+  group_by(date) %>% 
+  summarise(n = n())
+
+sd <- sd(stanD$n)
+
+plot2Data <- data %>%
+  mutate(date = date(Date)) %>% 
+  group_by(date) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = date, y = n)) +
+    # geom_text(aes(y = 8, ), label = "September Median",  vjust = -1, size = 3)+
+    # geom_ribbon(aes(ymin = n, ymax = if_else(n >= 8, n, 8L)), fill = "white", alpha = 0.2)+
+    # geom_ribbon(aes(ymin = if_else(n < 8, n, 8L), ymax = n), fill = "red", alpha = 0.4)+
+    geom_ribbon(aes(ymin = 8, ymax = n), fill = "#1BA4EA", alpha = 1)+
+    geom_line(colour = "#061C2C")+
+    geom_point(colour = "#061C2C", size = 1)+
+    geom_hline(aes(yintercept = median(n)), linetype = "dashed", colour = "#061C2C", size = 0.5) +
+
+  
+    labs(title = paste0("Daily stop and search incidents strongly vary in frequency"), 
+         subtitle = paste0("Numbers in Sep. '21 had a median of 8 and a standard deviation of ", round(sd, 2), " in the City of London"),
+         x = "",
+         y = "Stop and Search Incidents")+  
+  
+    theme_classic()
+
+                 
+plot2Data
+  
+```
+
+```{r}
+plot3Data <- data %>% 
+  drop_na(`Age range`, `Object of search`) %>% 
+  group_by(`Age range`, `Object of search`) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = `Age range`, `Object of search`))+
+    geom_tile(aes(fill = n))+
+    geom_text(aes(label = n), color = "white")+
+  
+    scale_y_discrete(position = "right")+
+  
+    labs(title = "Drug searching 25-34 year olds is most common",
+         subtitle = "Sep. '21 Stop & Search data for the City of London",
+         x = "Age",
+         y = "Search Object")+
+  
+    scale_fill_continuous(low = "#1BA4EA", high = "#061C2C")+
+  
+    theme_classic()+
+    theme(legend.position = "none")
+
+plot3Data
+```
+
+
+

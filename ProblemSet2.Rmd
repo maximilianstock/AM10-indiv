@@ -9,3 +9,34 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(vroom)
+library(tidyverse)
+library(scales)  #for transparency
+library(lubridate)
+library(ggExtra)
+```
+
+
+```{r}
+source <- "data/stop-search"
+```
+
+```{r}
+files <- fs::dir_ls(path = source, regexp = "\\.csv$", recurse = TRUE)
+```
+
+```{r}
+stop_search_data <- vroom(files, id = "source")
+```
+
+```{r}
+plot1Data <- stop_search_data %>% 
+  select(-source) %>% 
+  drop_na(`Object of search`) %>% 
+  mutate("month" = month(Date), "year" = year(Date)) %>% 
+  group_by(month, year, `Object of search`) %>% 
+  # summarise(count = n())
+```
+
+
