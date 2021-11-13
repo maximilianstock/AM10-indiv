@@ -15,6 +15,7 @@ library(tidyverse)
 library(scales)  #for transparency
 library(lubridate)
 library(ggExtra)
+library(plyr)
 ```
 
 
@@ -31,12 +32,32 @@ stop_search_data <- vroom(files, id = "source")
 ```
 
 ```{r}
-plot1Data <- stop_search_data %>% 
-  select(-source) %>% 
-  drop_na(`Object of search`) %>% 
-  mutate("month" = month(Date), "year" = year(Date)) %>% 
-  group_by(month, year, `Object of search`) %>% 
-  # summarise(count = n())
+# plot1Data <- stop_search_data %>%
+#   select(-source, c("Object of search", "Date")) %>%
+#   drop_na(`Object of search`) %>%
+#   mutate("month" = month(Date)) %>%
+#   
+#   group_by(`Object of search`, month) %>%
+#   dplyr::summarise(count = n()) %>% 
+#   ddply(.(`Object of search`), transform, rescale = rescale(count)) %>% 
+#   select(-"Object.of.search") %>% 
+# 
+# 
+# 
+#   ggplot(aes(x = month, y = `Object of search`))+
+#     geom_tile(aes(fill = rescale))
+# 
+# plot1Data
 ```
+
+```{r}
+plot1Data <- stop_search_data %>%
+  sele
+
+```
+
+
+
+
 
 
