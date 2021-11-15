@@ -16,8 +16,18 @@ library(scales)  #for transparency
 library(lubridate)
 library(ggExtra)
 library(plyr)
+library(janitor)
+library(ggrepel)
 ```
 
+
+```{r}
+library(extrafont)
+```
+```{r}
+font_import(paths = "/Users/maximilianstock/Library/Fonts/max")
+fonts()
+```
 
 ```{r}
 source <- "data/stop-search"
@@ -51,13 +61,155 @@ stop_search_data <- vroom(files, id = "source")
 ```
 
 ```{r}
-plot1Data <- stop_search_data %>%
-  sele
+cl_stop_search_data <- stop_search_data %>%
+  clean_names()
+```
 
+```{r}
+plot1Data <- cl_stop_search_data %>% 
+  select(c("date", "age_range")) %>%
+  filter(age_range == "18-24") %>% 
+  drop_na() %>% 
+  mutate(day = date(date),
+         Month_Yr = format_ISO8601(day, precision = "ym"),
+         fct_Month_Yr = factor(Month_Yr)) %>% 
+  select(-c("date")) %>%
+  filter(day > "2018-09-30") %>%
+  group_by(fct_Month_Yr, age_range) %>%
+  dplyr::summarise(count = round(n()/1000),1) %>%
+  mutate(hl = ifelse(fct_Month_Yr %in% c("2020-04", "2020-06", "2020-07"), "high", ifelse(fct_Month_Yr %in% c("2020-03", "2020-05"), "superHigh", "low"))) %>% 
+  ggplot(aes(x = fct_Month_Yr, y = count, fill = hl)) +
+    geom_col()+
+    geom_text(aes(label = count), size = 3.5, vjust = 1.6, color = "white")+
+    scale_fill_manual(values=c("#edf6fa", "#edf6fa",  "#061C2C"))+
+    theme_classic()+
+    theme(legend.position = "none", text = element_text(family = "Lato"))+
+    scale_x_discrete(labels = c("2018-10" = "", "2018-11" = "", "2018-12" = "", "2019-01" = "2019", "2019-02" = "", "2019-03" = "", "2019-04" = "", "2019-05" = "", "2019-06" = "", "2019-07" = "", "2019-08" = "", "2019-09" = "", "2019-10" = "", "2019-11" = "", "2019-12" = "", "2020-01" = "2020", "2020-02" = "", "2020-03" = "Mar", "2020-04" = "", "2020-05" = "May", "2020-06" = "", "2020-07" = "", "2020-08" = "", "2020-09" = "", "2020-10" = "", "2020-11" = "", "2020-12" = "", "2021-01" = "2021", "2021-02" = "", "2021-03" = "", "2021-04" = "", "2021-05" = "", "2021-06" = "", "2021-07" = "", "2021-08" = "", "2021-09" = ""))+
+    
+    labs(title = "Incidents double in a matter of two months due to lockdown",
+         subtitle = "Metropolitan Police stop and search data for 18-24 year olds",
+         x = "",
+         y = "Incidents in thousands")+
+    geom_segment(aes(x=18,xend=19,y=16,yend=16), colour = "#061C2C")+
+    geom_segment(aes(x=18,xend=18,y=8.4,yend=16), colour = "#061C2C")
+
+plot1Data
 ```
 
 
+```{r mapLibraries}
+library(tidyverse)
+library(lubridate)
+library(ggmap)
+library(ggrepel)
+library(gridExtra)
+library(pander)
+library(here)
+library(janitor)
+library(skimr)
+library(leaflet)
+library(tmap)
+library(tmaptools)
+library(hrbrthemes)
+library(mapview)
+library(viridis)
+library(sf)
+library(here)
+```
+
+```{r}
+plot2Data <- cl_stop_search_data %>% 
+  select(c("date", "age_range", "latitude" ,"longitude", "object_of_search")) %>%
+  filter(age_range == "18-24", object_of_search == "Controlled drugs") %>% 
+  drop_na() %>% 
+  mutate(day = date(date),
+         Month_Yr = format_ISO8601(day, precision = "ym"),
+         fct_Month_Yr = factor(Month_Yr)) %>% 
+  select(-c("date")) %>%
+  filter(Month_Yr %in% c("2020-03", "2020-05")) %>% 
+  dplyr::rename(lng = longitude,
+         lat = latitude) %>% 
+  filter(lng <0.5, !is.na(lng), !is.na(lat))
+
+```
+
+```{r}
+x <- here("data/map/London-wards-2018_ESRI/London_Ward.shp")
+london_wards_sf <- read_sf(x)
+london_wgs84 <-  london_wards_sf %>% 
+  st_transform(4326)
+```
+
+```{r}
+plot2Data_sf <-  st_as_sf(plot2Data, 
+                              coords=c('lng', 'lat'), 
+                              crs=st_crs(london_wgs84))
+```
 
 
+```{r}
+library(extrafont)
+extrafont::font_import()
+```
 
+```{r createMap}
+ggplot() +
+  # draw polygons from London wards shapefile
+  geom_sf(data = london_wgs84, fill = "#1BA4EA", size = 0.125, colour = "#061C2C") +
+  
+  # add points from stop-and-search shapefile
+  geom_sf(
+    data = plot2Data_sf, colour = "#061C2C", size = 0.1, alpha = 1, shape = 21,
+    show.legend = FALSE
+  ) + 
+  # scale_fill_manual(values=c("#edf6fa",  "#061C2C"))+
+  coord_sf(datum = NA) + #remove coordinates
+  facet_wrap(~Month_Yr) +
+  
+  labs(title = "Police searching for drugs flood the streets of London",
+       subtitle = "Spatial representation of searching 18-24 year olds for drugs")+
+  
+  theme_classic()+
+  theme(text = element_text(family = "Lato"))+
+  theme(axis.text = element_blank(), strip.text = element_text(color = "black"))
+
+```
+
+```{r }
+
+plot3Data <- cl_stop_search_data %>%
+  select(c("date", "age_range", "object_of_search", "outcome")) %>%
+  filter(age_range == "18-24", object_of_search == "Controlled drugs") %>% 
+  drop_na() %>% 
+  mutate(day = date(date),
+         Month_Yr = format_ISO8601(day, precision = "ym")) %>% 
+  select(-c("date")) %>%
+  filter(Month_Yr %in% c("2020-03", "2020-05")) %>% 
+  select(-c("age_range", "object_of_search")) %>% 
+  mutate(arrestYN = ifelse(outcome == "Arrest", "Arrest", "No Arrest")) %>% 
+  group_by(Month_Yr) %>% 
+  dplyr::mutate(countM = n()) %>% 
+  group_by(arrestYN, add=TRUE) %>%
+  dplyr::mutate(per = n()/countM) %>% 
+  group_by(Month_Yr, arrestYN, per) %>% 
+  dplyr::summarise(n = n()) %>% 
+  
+  ggplot(aes(fill = arrestYN, y = n, x = Month_Yr)) +
+    geom_bar(position="fill", stat="identity")+
+    geom_text(aes(label=percent(per), y = ifelse(per > 0.3, per-0.05, 1-per+0.05)), color = "white")+
+  
+    scale_fill_manual(values=c("#1BA4EA", "#061C2C"))+
+  
+    labs(title = "Searched Asians are least likely to get arrested",
+         subtitle = "Arrest percentages during Stop & Search incidents for Sep. '21 in the City of London by perceived race",
+         x = "") +
+  
+    theme_classic()+
+    theme(legend.title = element_blank(),
+          axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank())
+plot3Data
+
+```
 

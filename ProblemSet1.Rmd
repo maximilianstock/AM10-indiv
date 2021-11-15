@@ -26,11 +26,11 @@ plot1Data <- data %>%
   drop_na(`Officer-defined ethnicity`) %>% 
   mutate(arrestYN = ifelse(Outcome == "Arrest", "Arrest", "No Arrest")) %>% 
   group_by(`Officer-defined ethnicity`) %>%
-  mutate(countT= n()) %>%
+  dplyr::mutate(countT= n()) %>%
   group_by(arrestYN, add=TRUE) %>%
-  mutate(per = n()/countT) %>% 
+  dplyr::mutate(per = n()/countT) %>% 
   group_by(`Officer-defined ethnicity`, arrestYN,per) %>%
-  summarise(n = n()) %>% 
+  dplyr::summarise(n = n()) %>% 
   
   ggplot(aes(fill = arrestYN, y = n, x = fct_relevel(`Officer-defined ethnicity`, "Other", "White", "Black", "Asian"))) +
     geom_bar(position="fill", stat="identity")+
@@ -56,14 +56,14 @@ plot1Data
 stanD <- data %>%
   mutate(date = date(Date)) %>% 
   group_by(date) %>% 
-  summarise(n = n())
+  dplyr::summarise(n = n())
 
 sd <- sd(stanD$n)
 
 plot2Data <- data %>%
   mutate(date = date(Date)) %>% 
   group_by(date) %>% 
-  summarise(n = n()) %>% 
+  dplyr::summarise(n = n()) %>% 
   ggplot(aes(x = date, y = n)) +
     # geom_text(aes(y = 8, ), label = "September Median",  vjust = -1, size = 3)+
     # geom_ribbon(aes(ymin = n, ymax = if_else(n >= 8, n, 8L)), fill = "white", alpha = 0.2)+
@@ -90,7 +90,7 @@ plot2Data
 plot3Data <- data %>% 
   drop_na(`Age range`, `Object of search`) %>% 
   group_by(`Age range`, `Object of search`) %>% 
-  summarise(n = n()) %>% 
+  dplyr::summarise(n = n()) %>% 
   ggplot(aes(x = `Age range`, `Object of search`))+
     geom_tile(aes(fill = n))+
     geom_text(aes(label = n), color = "white")+
